@@ -1862,12 +1862,12 @@
                     <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle theme">
                         <i class="fas fa-moon" id="themeIcon"></i>
                     </button>
-                    <button class="notif-btn" id="dashboardBtn">
-                        <i class="fas fa-user"></i>
-                    </button>
                     <button class="notif-btn" id="notifBtn">
                         <i class="fas fa-bell"></i>
                         <span class="dot" id="notifDot"></span>
+                    </button>
+                    <button class="notif-btn" id="dashboardBtn">
+                        <i class="fas fa-user"></i>
                     </button>
                 </div>
             </div>
@@ -2011,8 +2011,9 @@
             <div class="player-brand"><i class="fas fa-graduation-cap"></i><span class="brand-text">Ed<span>Vora</span></span></div>
         </div>
         <div class="v-yt-wrap" id="v-yt-wrap">
-            <iframe id="v-yt-iframe" allowfullscreen allow="autoplay; encrypted-media; fullscreen" src=""></iframe>
-            <video id="v-native" style="display:none;width:100%;height:100%;background:#000;" controls playsinline></video>
+            <div id="v-yt-player-target" style="width:100%;height:100%;"></div>
+            <iframe id="v-yt-iframe" allowfullscreen allow="autoplay; encrypted-media; fullscreen" src="" style="display:none;"></iframe>
+            <video id="v-native" style="display:none;width:100%;height:100%;background:#000;" playsinline></video>
         </div>
         <div class="vwrap" id="v-poster-wrap">
             <div class="vbg"></div>
@@ -2044,6 +2045,7 @@
                 </div>
                 <div class="ctrl-r">
                     <button class="spd-btn" id="v-spd" onclick="cycleSpeed()">1x</button>
+                    <button class="fsc-btn" id="v-download-btn" onclick="downloadCurrentVideo()" style="display:none;" title="Download video"><i class="fas fa-download"></i></button>
                     <button class="fsc-btn" onclick="toggleFS()">⛶</button>
                 </div>
             </div>
@@ -2078,6 +2080,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDeUgZKXgCy-U-ptQPq6o3eTv26eSNS_aM",
@@ -2118,6 +2121,75 @@
             speed = 1,
             speedIdx = 2;
         const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+        // ─── Custom YouTube player (via official YT IFrame API) ───
+        // Falls back automatically to a plain embed if the API doesn't load in time.
+        let ytPlayer = null;
+        let ytApiReady = false;
+        let ytApiFailTimer = null;
+        let pendingYtVideoId = null;
+        let activePlaybackMode = null; // 'yt' | 'native' | 'plain'
+
+        function onYouTubeIframeAPIReady() {
+            ytApiReady = true;
+            if (ytApiFailTimer) { clearTimeout(ytApiFailTimer); ytApiFailTimer = null; }
+            if (pendingYtVideoId) {
+                const id = pendingYtVideoId;
+                pendingYtVideoId = null;
+                createYtPlayer(id);
+            }
+        }
+        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+
+        function createYtPlayer(videoId) {
+            const target = document.getElementById('v-yt-player-target');
+            target.style.display = 'block';
+            activePlaybackMode = 'yt';
+            if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+                ytPlayer.loadVideoById(videoId);
+                return;
+            }
+            ytPlayer = new YT.Player('v-yt-player-target', {
+                videoId,
+                playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, controls: 0 },
+                events: {
+                    onReady: (e) => {
+                        totalDur = e.target.getDuration() || totalDur;
+                        document.getElementById('v-total').textContent = fmt(Math.floor(totalDur));
+                        isPlaying = true;
+                        updateUI();
+                        startYtProgressPolling();
+                    },
+                    onStateChange: (e) => {
+                        isPlaying = (e.data === YT.PlayerState.PLAYING);
+                        updateUI();
+                    },
+                    onError: () => {
+                        // Something went wrong with the custom player — fall back to a plain embed.
+                        fallbackToPlainYoutubeEmbed(videoId);
+                    }
+                }
+            });
+        }
+
+        function startYtProgressPolling() {
+            clearInterval(pInterval);
+            pInterval = setInterval(() => {
+                if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+                curTime = ytPlayer.getCurrentTime() || 0;
+                totalDur = ytPlayer.getDuration() || totalDur;
+                updateProgress();
+            }, 500);
+        }
+
+        function fallbackToPlainYoutubeEmbed(videoId) {
+            activePlaybackMode = 'plain';
+            document.getElementById('v-yt-player-target').style.display = 'none';
+            const ytFrame = document.getElementById('v-yt-iframe');
+            ytFrame.style.display = 'block';
+            ytFrame.src = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0&fs=1&modestbranding=1';
+            document.getElementById('v-ctrl').style.display = 'none';
+        }
 
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
@@ -2167,9 +2239,11 @@
             const player = document.getElementById('playerView');
             const ytWrap = document.getElementById('v-yt-wrap');
             const ytFrame = document.getElementById('v-yt-iframe');
+            const ytTarget = document.getElementById('v-yt-player-target');
             const nativeVideo = document.getElementById('v-native');
             const posterWrap = document.getElementById('v-poster-wrap');
             const ctrl = document.getElementById('v-ctrl');
+            const dlBtn = document.getElementById('v-download-btn');
 
             document.getElementById('v-title').textContent = lecData.name || 'Lecture';
             document.getElementById('v-meta').textContent = (folderName || 'Course') + ' · Batch';
@@ -2180,14 +2254,20 @@
 
             const t = (lecData.duration || '00:00').split(':');
             totalDur = t.length === 3 ? +t[0] * 3600 + +t[1] * 60 + +t[2] : +t[0] * 60 + +t[1];
+            curTime = 0;
+            isPlaying = false;
+            clearInterval(pInterval);
 
-            // Reset both players first
+            // Reset every playback surface first
             nativeVideo.pause();
             nativeVideo.removeAttribute('src');
             nativeVideo.load();
             nativeVideo.style.display = 'none';
-            ytFrame.style.display = '';
+            ytFrame.style.display = 'none';
             ytFrame.src = '';
+            ytTarget.style.display = 'none';
+            if (ytPlayer && typeof ytPlayer.stopVideo === 'function') { try { ytPlayer.stopVideo(); } catch (e) {} }
+            dlBtn.style.display = 'none';
 
             const url = (lecData.url || '').trim();
             const videoId = url ? getYouTubeId(url) : null;
@@ -2195,34 +2275,58 @@
             const isDirectFile = !videoId && !driveEmbed && url ? isDirectVideoFile(url) : false;
 
             if (videoId) {
-                // YouTube (including Shorts)
-                const embedUrl = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0&fs=1&modestbranding=1&enablejsapi=1';
-                ytFrame.src = embedUrl;
+                // YouTube (including Shorts/Live) — custom player with our own controls
+                activePlaybackMode = 'yt';
                 ytWrap.classList.add('active');
                 posterWrap.style.display = 'none';
-                ctrl.style.display = 'none';
+                ctrl.style.display = 'block';
+
+                if (ytApiReady) {
+                    createYtPlayer(videoId);
+                } else {
+                    pendingYtVideoId = videoId;
+                    // If the YT API script doesn't respond in time, gracefully fall
+                    // back to a plain embed so the video still plays either way.
+                    ytApiFailTimer = setTimeout(() => fallbackToPlainYoutubeEmbed(videoId), 4000);
+                }
             } else if (driveEmbed) {
-                // Google Drive shared video (recorded classes, video calls etc.)
+                // Google Drive shared video — plays fine with its own built-in controls
+                activePlaybackMode = 'plain';
+                ytFrame.style.display = 'block';
                 ytFrame.src = driveEmbed;
                 ytWrap.classList.add('active');
                 posterWrap.style.display = 'none';
                 ctrl.style.display = 'none';
             } else if (isDirectFile) {
-                // Direct .mp4 / .webm / etc — use native <video> for reliable playback
-                ytFrame.style.display = 'none';
+                // Direct .mp4 / .webm / etc — native <video>, driven by our custom controls
+                activePlaybackMode = 'native';
                 nativeVideo.style.display = 'block';
                 nativeVideo.src = url;
-                nativeVideo.play().catch(() => {});
+                nativeVideo.play().then(() => { isPlaying = true; updateUI(); }).catch(() => {});
+                nativeVideo.onloadedmetadata = () => {
+                    totalDur = nativeVideo.duration || totalDur;
+                    document.getElementById('v-total').textContent = fmt(Math.floor(totalDur));
+                };
+                nativeVideo.ontimeupdate = () => {
+                    curTime = nativeVideo.currentTime;
+                    updateProgress();
+                };
+                nativeVideo.onplay = () => { isPlaying = true; updateUI(); };
+                nativeVideo.onpause = () => { isPlaying = false; updateUI(); };
                 ytWrap.classList.add('active');
                 posterWrap.style.display = 'none';
-                ctrl.style.display = 'none';
+                ctrl.style.display = 'block';
+                dlBtn.style.display = 'inline-flex';
             } else if (url !== '') {
                 // Unknown link type — try loading it as an embeddable page/video as a last resort
+                activePlaybackMode = 'plain';
+                ytFrame.style.display = 'block';
                 ytFrame.src = url;
                 ytWrap.classList.add('active');
                 posterWrap.style.display = 'none';
                 ctrl.style.display = 'none';
             } else {
+                activePlaybackMode = null;
                 ytWrap.classList.remove('active');
                 ytFrame.src = '';
                 posterWrap.style.display = '';
@@ -2248,22 +2352,36 @@
             if (screen.orientation && screen.orientation.unlock) {
                 try { screen.orientation.unlock(); } catch (e) {}
             }
+            if (ytPlayer && typeof ytPlayer.stopVideo === 'function') { try { ytPlayer.stopVideo(); } catch (e) {} }
             const nativeVideo = document.getElementById('v-native');
             nativeVideo.pause();
             nativeVideo.removeAttribute('src');
             nativeVideo.load();
             nativeVideo.style.display = 'none';
             document.getElementById('v-yt-iframe').src = '';
-            document.getElementById('v-yt-iframe').style.display = '';
+            document.getElementById('v-yt-iframe').style.display = 'none';
+            document.getElementById('v-yt-player-target').style.display = 'none';
             document.getElementById('v-yt-wrap').classList.remove('active');
             document.getElementById('v-poster-wrap').style.display = '';
             document.getElementById('v-ctrl').style.display = '';
             document.getElementById('playerView').classList.remove('active');
             document.getElementById('app').style.display = 'block';
             document.body.style.overflow = '';
+            activePlaybackMode = null;
         }
 
         function togglePlay() {
+            if (activePlaybackMode === 'yt' && ytPlayer) {
+                if (isPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+                return; // isPlaying/UI update happens via the onStateChange event
+            }
+            if (activePlaybackMode === 'native') {
+                const nativeVideo = document.getElementById('v-native');
+                if (isPlaying) nativeVideo.pause(); else nativeVideo.play().catch(() => {});
+                return; // isPlaying/UI update happens via onplay/onpause events
+            }
+
+            // Simulated/no-URL placeholder mode
             isPlaying = !isPlaying;
             updateUI();
             if (isPlaying) {
@@ -2306,11 +2424,38 @@
 
         function pad(n) { return n.toString().padStart(2, '0'); }
 
-        function skipBack() { curTime = Math.max(0, curTime - 10);
+        function skipBack() {
+            if (activePlaybackMode === 'yt' && ytPlayer) {
+                const t = Math.max(0, ytPlayer.getCurrentTime() - 10);
+                ytPlayer.seekTo(t, true);
+                curTime = t;
+                updateProgress();
+                return;
+            }
+            if (activePlaybackMode === 'native') {
+                const nativeVideo = document.getElementById('v-native');
+                nativeVideo.currentTime = Math.max(0, nativeVideo.currentTime - 10);
+                return;
+            }
+            curTime = Math.max(0, curTime - 10);
             updateProgress(); }
 
-        function skipFwd() { curTime = Math.min(totalDur, curTime + 10);
-            updateProgress(); }
+        function skipFwd() {
+            if (activePlaybackMode === 'yt' && ytPlayer) {
+                const t = Math.min(ytPlayer.getDuration() || totalDur, ytPlayer.getCurrentTime() + 10);
+                ytPlayer.seekTo(t, true);
+                curTime = t;
+                updateProgress();
+                return;
+            }
+            if (activePlaybackMode === 'native') {
+                const nativeVideo = document.getElementById('v-native');
+                nativeVideo.currentTime = Math.min(nativeVideo.duration || totalDur, nativeVideo.currentTime + 10);
+                return;
+            }
+            curTime = Math.min(totalDur, curTime + 10);
+            updateProgress();
+        }
 
         function cycleSpeed() {
             speedIdx = (speedIdx + 1) % SPEEDS.length;
@@ -2422,6 +2567,21 @@
             viewer.classList.add('active');
             document.getElementById('app').style.display = 'none';
             document.body.style.overflow = 'hidden';
+        }
+
+        function downloadCurrentVideo() {
+            const url = (document.getElementById('v-native').src || '').trim();
+            if (!url) { showToast('⚠️ No downloadable file for this video!', 1800); return; }
+            const title = document.getElementById('v-title').textContent || 'Lecture';
+            const filename = `${title} EdVora.mp4`.replace(/[\\/:*?"<>|]/g, '');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
         document.getElementById('pdfDownloadBtn').addEventListener('click', () => {
@@ -2632,11 +2792,23 @@
                     currentUser.approved = true;
                     saveCurrentUser();
                     updateDailyStreak();
-                    renderUserDashboard();
+                    revealApp();
                 } else {
                     document.getElementById('approvalWaitModal').classList.add('open');
                 }
             });
+        }
+
+        function revealApp() {
+            const app = document.getElementById('app');
+            if (!app.classList.contains('visible')) {
+                app.classList.add('visible');
+                updateStats();
+                showView('home');
+            }
+            if (document.getElementById('dashboardView').classList.contains('active')) {
+                renderUserDashboard();
+            }
         }
 
         // ─── Daily streak ───
@@ -2765,8 +2937,6 @@
             document.getElementById('splash').classList.add('hide');
             setTimeout(() => {
                 document.getElementById('splash').style.display = 'none';
-                document.getElementById('app').classList.add('visible');
-                updateStats();
                 ensureUserRegistered();
             }, 800);
         }, 1800);
@@ -2884,11 +3054,29 @@
                         </div>
                     </div>
 
-                    <button onclick="openLiveChat()" style="width:100%;padding:13px;border:none;border-radius:40px;font-weight:700;font-size:0.88rem;cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;">
+                    <button onclick="openLiveChat()" style="width:100%;padding:13px;border:none;border-radius:40px;font-weight:700;font-size:0.88rem;cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;margin-bottom:10px;">
                         <i class="fas fa-headset"></i> Contact Owner for Any Problem
+                    </button>
+                    <button onclick="logoutUser()" style="width:100%;padding:13px;border:1px solid #f87171;border-radius:40px;font-weight:700;font-size:0.88rem;cursor:pointer;background:transparent;color:#f87171;">
+                        <i class="fas fa-right-from-bracket"></i> Logout
                     </button>
                 </div>
             `;
+        }
+
+        function logoutUser() {
+            if (!confirm('Are you sure you want to logout?')) return;
+            localStorage.removeItem('eduverse_current_user');
+            currentUser = null;
+            if (chatListenerAttached && firebaseUid) {
+                fbdb.ref('chats/' + firebaseUid + '/messages').off();
+                chatListenerAttached = false;
+            }
+            // NOTE: we deliberately don't call fbauth.signOut() here — that would
+            // generate a brand-new anonymous Firebase ID on next load, disconnecting
+            // this device from its existing profile/streak/chat history. Clearing
+            // the local session is enough to send the person back to the login screen.
+            location.reload();
         }
 
         document.getElementById('dashboardBtn').addEventListener('click', () => {
@@ -3494,6 +3682,6 @@
         console.log('📁 Click folder → Subfolder page with Lectures & PDFs');
         console.log('🎬 Video Player & PDF Viewer integrated!');
         console.log('✅ Enroll Modal simplified!');
-    </</script>
+    </script>
 </body>
-      </html>
+</html>
