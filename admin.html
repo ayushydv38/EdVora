@@ -17,24 +17,31 @@
         }
 
         :root {
-            --bg-primary: #0a0e1a;
-            --bg-secondary: #111827;
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.06);
-            --primary: #8b5cf6;
-            --primary-dark: #7c3aed;
-            --primary-light: #a78bfa;
-            --primary-glow: rgba(139, 92, 246, 0.25);
-            --success: #34d399;
-            --warning: #fbbf24;
-            --danger: #f87171;
-            --text: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-dim: #64748b;
-            --border: rgba(255, 255, 255, 0.06);
-            --radius: 16px;
-            --radius-sm: 10px;
-            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            /* Light, airy indigo/violet + cyan — matches the student-facing app,
+               with a rose accent reserved for admin-only actions */
+            --bg-primary: #f6f7fd;
+            --bg-secondary: #ecf0fb;
+            --glass-bg: rgba(255, 255, 255, 0.78);
+            --glass-border: rgba(76, 70, 180, 0.10);
+            --primary: #6c5ce7;
+            --primary-dark: #5541d1;
+            --primary-light: #8f7ff5;
+            --primary-glow: rgba(108, 92, 231, 0.18);
+            --secondary: #0aa8c9;
+            --secondary-glow: rgba(10, 168, 201, 0.16);
+            --admin: #e0439a;
+            --admin-glow: rgba(224, 67, 154, 0.16);
+            --success: #17a865;
+            --warning: #e08e0b;
+            --danger: #e6493f;
+            --text: #23253f;
+            --text-secondary: #5c5f81;
+            --text-dim: #9396b5;
+            --border: rgba(76, 70, 180, 0.10);
+            --radius: 18px;
+            --radius-sm: 12px;
+            --transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            --shadow-lift: 0 14px 36px rgba(76, 70, 180, 0.14);
         }
 
         body {
@@ -43,7 +50,10 @@
             color: var(--text);
             min-height: 100vh;
             padding: 20px 24px 40px;
-            background-image: radial-gradient(ellipse at 10% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
+            background-image: radial-gradient(ellipse at 8% 15%, var(--primary-glow) 0%, transparent 45%),
+                radial-gradient(ellipse at 92% 8%, var(--admin-glow) 0%, transparent 40%),
+                radial-gradient(ellipse at 50% 100%, var(--secondary-glow) 0%, transparent 55%);
+            background-attachment: fixed;
         }
 
         ::-webkit-scrollbar { width: 6px; }
@@ -75,8 +85,34 @@
             gap: 10px;
         }
 
-        .admin-header .brand i { color: var(--primary); }
-        .admin-header .brand .brand-text span { color: var(--primary); }
+        .admin-header {
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .admin-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, var(--primary-glow), transparent, var(--admin-glow));
+            opacity: 0;
+            transition: var(--transition);
+        }
+        .admin-header:hover::before { opacity: 1; }
+        .admin-header .brand i {
+            color: var(--primary);
+            animation: float 3.5s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .admin-header .brand .brand-text span {
+            background: linear-gradient(135deg, var(--primary), var(--admin));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
         .admin-header .header-actions {
             display: flex;
@@ -223,6 +259,17 @@
             border-radius: var(--radius);
             padding: 24px 28px;
             margin-bottom: 20px;
+            transition: var(--transition);
+            animation: cardPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        }
+        .panel-card:hover {
+            border-color: var(--primary-glow);
+            box-shadow: var(--shadow-lift);
+            transform: translateY(-2px);
+        }
+        @keyframes cardPop {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .panel-card h3 {
@@ -292,16 +339,31 @@
             cursor: pointer;
             transition: var(--transition);
             font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
         }
 
+        .btn-submit::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -75%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.6s ease;
+        }
+        .btn-submit:hover::after { left: 125%; }
+
         .btn-submit:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 20px var(--primary-glow);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 22px var(--primary-glow);
         }
 
         .btn-danger {
-            background: rgba(248, 113, 113, 0.15);
-            border: 1px solid rgba(248, 113, 113, 0.2);
+            background: rgba(230, 73, 63, 0.10);
+            border: 1px solid rgba(230, 73, 63, 0.25);
             color: var(--danger);
             padding: 8px 16px;
             border-radius: 40px;
@@ -312,11 +374,11 @@
             font-family: 'Inter', sans-serif;
         }
 
-        .btn-danger:hover { background: rgba(248, 113, 113, 0.3); }
+        .btn-danger:hover { background: rgba(230, 73, 63, 0.2); transform: translateY(-1px); }
 
         .btn-success {
-            background: rgba(52, 211, 153, 0.15);
-            border: 1px solid rgba(52, 211, 153, 0.2);
+            background: rgba(23, 168, 101, 0.10);
+            border: 1px solid rgba(23, 168, 101, 0.25);
             color: var(--success);
             padding: 8px 16px;
             border-radius: 40px;
@@ -327,11 +389,11 @@
             font-family: 'Inter', sans-serif;
         }
 
-        .btn-success:hover { background: rgba(52, 211, 153, 0.3); }
+        .btn-success:hover { background: rgba(23, 168, 101, 0.2); transform: translateY(-1px); }
 
         .btn-warning {
-            background: rgba(251, 191, 36, 0.15);
-            border: 1px solid rgba(251, 191, 36, 0.2);
+            background: rgba(224, 142, 11, 0.10);
+            border: 1px solid rgba(224, 142, 11, 0.25);
             color: var(--warning);
             padding: 8px 16px;
             border-radius: 40px;
@@ -342,7 +404,7 @@
             font-family: 'Inter', sans-serif;
         }
 
-        .btn-warning:hover { background: rgba(251, 191, 36, 0.3); }
+        .btn-warning:hover { background: rgba(224, 142, 11, 0.2); transform: translateY(-1px); }
 
         .logo-preview {
             display: flex;
@@ -503,12 +565,28 @@
             border-radius: var(--radius);
             padding: 18px 20px;
             text-align: center;
+            transition: var(--transition);
+            animation: cardPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        }
+        .stats-grid > *:nth-child(1) { animation-delay: 0.03s; }
+        .stats-grid > *:nth-child(2) { animation-delay: 0.08s; }
+        .stats-grid > *:nth-child(3) { animation-delay: 0.13s; }
+        .stats-grid > *:nth-child(4) { animation-delay: 0.18s; }
+        .stats-grid > *:nth-child(5) { animation-delay: 0.23s; }
+        .stats-grid > *:nth-child(n+6) { animation-delay: 0.28s; }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lift);
         }
 
         .stat-card .number {
             font-size: 2rem;
             font-weight: 800;
-            color: var(--primary-light);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-card .label {
@@ -935,8 +1013,8 @@
                 <div class="form-group">
                     <label>Theme Mode</label>
                     <select id="themeMode" onchange="toggleTheme()">
+                        <option value="light" selected>Light</option>
                         <option value="dark">Dark</option>
-                        <option value="light">Light</option>
                     </select>
                 </div>
             </div>
@@ -996,20 +1074,70 @@
     </script>
 
     <!-- ─── ADMIN LOGIN GATE ─── -->
-    <div id="adminLoginGate" style="position:fixed;inset:0;z-index:5000;background:#0f0f1a;display:flex;align-items:center;justify-content:center;padding:20px;font-family:'Inter',sans-serif;">
-        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:36px 30px;max-width:380px;width:100%;">
-            <h2 style="color:#fff;font-size:1.4rem;font-weight:800;margin-bottom:6px;"><i class="fas fa-shield-alt" style="color:#818cf8;"></i> Admin Login</h2>
-            <p style="color:#9ca3af;font-size:0.85rem;margin-bottom:22px;">Sign in to manage EdVora content.</p>
-            <div style="margin-bottom:14px;">
-                <label style="display:block;font-size:0.8rem;color:#9ca3af;margin-bottom:5px;">Email</label>
-                <input type="email" id="adminLoginEmail" placeholder="you@example.com" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:0.9rem;" />
+    <style>
+        #adminLoginGate {
+            position: fixed; inset: 0; z-index: 5000;
+            background: linear-gradient(135deg, #f6f7fd 0%, #eef0fc 45%, #eaf6fb 100%);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        #adminLoginGate::before, #adminLoginGate::after {
+            content: ''; position: absolute; border-radius: 50%; filter: blur(90px);
+            animation: loginBlob 7s ease-in-out infinite;
+        }
+        #adminLoginGate::before { top: -12%; right: -8%; width: 340px; height: 340px; background: rgba(108,92,231,0.22); }
+        #adminLoginGate::after { bottom: -14%; left: -8%; width: 300px; height: 300px; background: rgba(10,168,201,0.18); animation-delay: 1.5s; }
+        @keyframes loginBlob { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+        .admin-login-card {
+            position: relative; z-index: 1;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(76,70,180,0.12);
+            border-radius: 22px;
+            padding: 38px 32px;
+            max-width: 380px; width: 100%;
+            box-shadow: 0 20px 60px rgba(76,70,180,0.18);
+            animation: loginRise 0.6s cubic-bezier(0.22,1,0.36,1) backwards;
+        }
+        @keyframes loginRise { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .admin-login-card h2 { color: #23253f; font-size: 1.4rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .admin-login-card h2 i { color: #6c5ce7; }
+        .admin-login-card p { color: #5c5f81; font-size: 0.85rem; margin-bottom: 22px; }
+        .admin-login-card label { display: block; font-size: 0.8rem; color: #5c5f81; margin-bottom: 5px; font-weight: 600; }
+        .admin-login-card input {
+            width: 100%; padding: 12px 14px; background: #fff;
+            border: 1px solid rgba(76,70,180,0.16); border-radius: 12px;
+            color: #23253f; font-size: 0.9rem; font-family: 'Inter', sans-serif;
+            transition: all 0.25s ease;
+        }
+        .admin-login-card input:focus { outline: none; border-color: #6c5ce7; box-shadow: 0 0 0 3px rgba(108,92,231,0.14); }
+        .admin-login-card .field { margin-bottom: 14px; }
+        #adminLoginError { color: #e6493f; font-size: 0.78rem; min-height: 18px; margin-bottom: 10px; }
+        #adminLoginBtn {
+            width: 100%; padding: 13px; border: none; border-radius: 40px;
+            font-weight: 700; font-size: 0.9rem; cursor: pointer;
+            background: linear-gradient(135deg, #6c5ce7, #5541d1); color: #fff;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
+            position: relative; overflow: hidden;
+        }
+        #adminLoginBtn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,92,231,0.35); }
+    </style>
+    <div id="adminLoginGate">
+        <div class="admin-login-card">
+            <h2><i class="fas fa-shield-alt"></i> Admin Login</h2>
+            <p>Sign in to manage EdVora content.</p>
+            <div class="field">
+                <label>Email</label>
+                <input type="email" id="adminLoginEmail" placeholder="you@example.com" />
             </div>
-            <div style="margin-bottom:8px;">
-                <label style="display:block;font-size:0.8rem;color:#9ca3af;margin-bottom:5px;">Password</label>
-                <input type="password" id="adminLoginPassword" placeholder="••••••••" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:0.9rem;" />
+            <div class="field" style="margin-bottom:8px;">
+                <label>Password</label>
+                <input type="password" id="adminLoginPassword" placeholder="••••••••" />
             </div>
-            <div id="adminLoginError" style="color:#f87171;font-size:0.78rem;min-height:18px;margin-bottom:10px;"></div>
-            <button id="adminLoginBtn" style="width:100%;padding:13px;border:none;border-radius:40px;font-weight:700;font-size:0.9rem;cursor:pointer;background:linear-gradient(135deg,#818cf8,#6366f1);color:#fff;">
+            <div id="adminLoginError"></div>
+            <button id="adminLoginBtn">
                 <i class="fas fa-right-to-bracket"></i> Sign In
             </button>
         </div>
@@ -2152,27 +2280,36 @@
 
         function toggleTheme() {
             const mode = document.getElementById('themeMode').value;
+            const root = document.documentElement.style;
             if (mode === 'light') {
-                document.documentElement.style.setProperty('--bg-primary', '#f0f4ff');
-                document.documentElement.style.setProperty('--bg-secondary', '#e8ecf8');
-                document.documentElement.style.setProperty('--text', '#1a1a2e');
-                document.documentElement.style.setProperty('--text-secondary', '#555577');
-                document.documentElement.style.setProperty('--text-dim', '#8888aa');
-                document.documentElement.style.setProperty('--glass-bg', 'rgba(255,255,255,0.5)');
-                document.documentElement.style.setProperty('--glass-border', 'rgba(0,0,0,0.08)');
-                document.documentElement.style.setProperty('--border', 'rgba(0,0,0,0.08)');
+                root.setProperty('--bg-primary', '#f6f7fd');
+                root.setProperty('--bg-secondary', '#ecf0fb');
+                root.setProperty('--text', '#23253f');
+                root.setProperty('--text-secondary', '#5c5f81');
+                root.setProperty('--text-dim', '#9396b5');
+                root.setProperty('--glass-bg', 'rgba(255,255,255,0.78)');
+                root.setProperty('--glass-border', 'rgba(76,70,180,0.10)');
+                root.setProperty('--border', 'rgba(76,70,180,0.10)');
             } else {
-                document.documentElement.style.setProperty('--bg-primary', '#0a0e1a');
-                document.documentElement.style.setProperty('--bg-secondary', '#111827');
-                document.documentElement.style.setProperty('--text', '#f1f5f9');
-                document.documentElement.style.setProperty('--text-secondary', '#94a3b8');
-                document.documentElement.style.setProperty('--text-dim', '#64748b');
-                document.documentElement.style.setProperty('--glass-bg', 'rgba(255,255,255,0.03)');
-                document.documentElement.style.setProperty('--glass-border', 'rgba(255,255,255,0.06)');
-                document.documentElement.style.setProperty('--border', 'rgba(255,255,255,0.06)');
+                root.setProperty('--bg-primary', '#10122a');
+                root.setProperty('--bg-secondary', '#191c38');
+                root.setProperty('--text', '#f1f2fb');
+                root.setProperty('--text-secondary', '#a6a9c8');
+                root.setProperty('--text-dim', '#6e7191');
+                root.setProperty('--glass-bg', 'rgba(255,255,255,0.045)');
+                root.setProperty('--glass-border', 'rgba(255,255,255,0.09)');
+                root.setProperty('--border', 'rgba(255,255,255,0.09)');
             }
+            localStorage.setItem('edvora_admin_theme', mode);
             showToast(`🎨 Theme changed to ${mode}`, 1500);
         }
+
+        (function initAdminTheme() {
+            const saved = localStorage.getItem('edvora_admin_theme') || 'light';
+            const sel = document.getElementById('themeMode');
+            if (sel) sel.value = saved;
+            if (saved === 'dark') toggleTheme();
+        })();
 
         function renderBatchOrderList() {
             const container = document.getElementById('batchOrderList');
