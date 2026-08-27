@@ -1290,6 +1290,46 @@
             display: flex;
             animation: slideUp 0.4s ease;
         }
+
+        /* ─── FULLSCREEN MODE — cinematic full-page player ─── */
+        .player-view:fullscreen {
+            background: #000;
+        }
+        .player-view:fullscreen .v-yt-wrap,
+        .player-view:fullscreen .vwrap {
+            flex: 1;
+            height: 100%;
+            aspect-ratio: auto;
+        }
+        .player-view:fullscreen .player-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+            background: linear-gradient(180deg, rgba(0,0,0,0.65), transparent);
+            border-bottom: none;
+        }
+        .player-view:fullscreen .player-top .player-brand {
+            color: #fff;
+        }
+        .player-view:fullscreen .player-top .back-btn-player {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        .player-view:fullscreen .vctrl {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 20;
+            background: linear-gradient(0deg, rgba(0,0,0,0.75), transparent);
+            border-top: none;
+        }
+        .player-view:fullscreen .vinfo {
+            display: none;
+        }
         .player-top {
             display: flex;
             align-items: center;
@@ -2140,13 +2180,13 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDeUgZKXgCy-U-ptQPq6o3eTv26eSNS_aM",
-  authDomain: "edvora-41bf4.firebaseapp.com",
-  databaseURL: "https://edvora-41bf4-default-rtdb.firebaseio.com",
-  projectId: "edvora-41bf4",
-  storageBucket: "edvora-41bf4.firebasestorage.app",
-  messagingSenderId: "95314232717",
-  appId: "1:95314232717:web:bbe20ab42d83e65dcc29c4"
+            apiKey: "AIzaSyDeUgZKXgCy-U-ptQPq6o3eTv26eSNS_aM",
+            authDomain: "edvora-41bf4.firebaseapp.com",
+            databaseURL: "https://edvora-41bf4-default-rtdb.firebaseio.com",
+            projectId: "edvora-41bf4",
+            storageBucket: "edvora-41bf4.firebasestorage.app",
+            messagingSenderId: "95314232717",
+            appId: "1:95314232717:web:bbe20ab42d83e65dcc29c4"
         };
         firebase.initializeApp(firebaseConfig);
         const fbdb = firebase.database();
@@ -2533,13 +2573,11 @@
         }
 
         function toggleFS() {
-            const nativeVideo = document.getElementById('v-native');
-            let el;
-            if (document.getElementById('v-yt-wrap').classList.contains('active')) {
-                el = nativeVideo.style.display !== 'none' ? nativeVideo : document.getElementById('v-yt-iframe');
-            } else {
-                el = document.getElementById('playerView');
-            }
+            // Always fullscreen the WHOLE player container — not just the raw
+            // video/iframe element. If only the video element goes fullscreen,
+            // our back button and controls (which are siblings, not children,
+            // of the video) get hidden by the browser and become unclickable.
+            const el = document.getElementById('playerView');
             if (!document.fullscreenElement) {
                 el.requestFullscreen?.().then(() => {
                     if (screen.orientation && screen.orientation.lock) {
