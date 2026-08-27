@@ -1199,6 +1199,18 @@
                 NOTIFICATIONS = Object.keys(val).map(k => val[k]).sort((a, b) => (b.id || 0) - (a.id || 0));
                 renderNotificationHistory();
             });
+
+            // Live chat threads — this MUST be registered here (after admin auth
+            // succeeds), not at top-level script scope. Firebase security rules
+            // require a signed-in admin to read 'chats'; registering this listener
+            // before login means the very first read gets permission-denied and
+            // the subscription dies silently — it never retries even after the
+            // admin logs in later, which is why messages never appeared before.
+            fbdb.ref('chats').on('value', snap => {
+                CHATS = snap.val() || {};
+                renderChatThreadList();
+                if (activeChatUid) renderChatThreadMessages(activeChatUid);
+            });
         }
 
         // Kept for any code that still calls loadData() directly — Firebase listeners
@@ -2102,12 +2114,6 @@
 
         let CHATS = {};
         let activeChatUid = null;
-
-        fbdb.ref('chats').on('value', snap => {
-            CHATS = snap.val() || {};
-            renderChatThreadList();
-            if (activeChatUid) renderChatThreadMessages(activeChatUid);
-        });
 
         function renderChatThreadList() {
             const container = document.getElementById('chatThreadList');
